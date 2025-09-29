@@ -9,7 +9,7 @@ from apps.accounts.models import User
 
 class UserForm(forms.ModelForm):
     password = forms.CharField(
-        widget=forms.PasswordInput, label="Пароль", required=True
+        widget=forms.PasswordInput, label="Пароль", required=False
     )
 
     class Meta:
