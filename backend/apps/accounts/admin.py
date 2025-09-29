@@ -1,4 +1,5 @@
 from django.contrib import admin
+from django.contrib.auth.models import Group
 from django import forms
 from django.utils.html import format_html
 from config.settings import TELEGRAM_BOT_NAME
@@ -42,3 +43,6 @@ class UserAdmin(admin.ModelAdmin):
     @admin.display(description="Telegram привязан", boolean=True)
     def is_telegram_linked(self, obj: User):
         return obj.telegram_id is not None
+
+
+admin.site.unregister(Group)

@@ -46,7 +46,7 @@ class NotificationService:
 
     @classmethod
     def send_to_user(cls, user, message):
-        # Приоритет способов отправки уведомления
+        # Приоритет способов отправки уведомления (можно менять)
         channels = [
             cls.send_telegram,
             cls.send_sms,
