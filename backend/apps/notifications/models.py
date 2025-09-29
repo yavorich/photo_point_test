@@ -1,4 +1,5 @@
-from django.db import models
+from django.db import models, transaction
+from django.utils import timezone
 
 from apps.accounts.models import User
 
@@ -31,6 +32,45 @@ class Notification(models.Model):
     def __str__(self):
         return f"Уведомление {self.pk}"
 
+    @property
+    def last_log(self):
+        return self.logs.order_by("-started_at").first()
+
+    def update_log(self):
+        # Берём последний незавершённый лог
+        with transaction.atomic():
+            log = (
+                NotificationLog.objects.select_for_update()
+                .filter(notification=self, finished_at__isnull=True)
+                .order_by("-started_at")
+                .first()
+            )
+            if not log:
+                return  # Нет активного лога
+
+            # Получаем receivers запросом к базе, чтобы не было проблем синхронизации
+            total_sent = self.receivers.filter(status=NotificationStatus.SENT).count()
+            total_failed = self.receivers.filter(
+                status=NotificationStatus.FAILED
+            ).count()
+
+            updates = {
+                "total_sent": total_sent,
+                "total_failed": total_failed,
+            }
+
+            # Если все отправки выполнены — закрываем лог
+            if total_sent + total_failed == log.total_users:
+                now = timezone.now()
+                updates.update(
+                    {
+                        "finished_at": now,
+                        "duration_seconds": (now - log.started_at).total_seconds(),
+                    }
+                )
+
+            NotificationLog.objects.filter(pk=log.pk).update(**updates)
+
 
 class NotificationReceiver(models.Model):
     notification = models.ForeignKey(
@@ -62,3 +102,28 @@ class NotificationReceiver(models.Model):
     class Meta:
         verbose_name = "Получатель"
         verbose_name_plural = "Получатели"
+
+
+class NotificationLog(models.Model):
+    notification = models.ForeignKey(
+        Notification,
+        related_name="logs",
+        on_delete=models.CASCADE,
+    )
+    started_at = models.DateTimeField(auto_now_add=True)
+    total_users = models.PositiveIntegerField("Всего получателей", default=0)
+    total_sent = models.PositiveIntegerField("Отправлено", default=0)
+    total_failed = models.PositiveIntegerField("Ошибки", default=0)
+    duration_seconds = models.FloatField("Время выполнения (c)", null=True, blank=True)
+    finished_at = models.DateTimeField("Завершено", null=True, blank=True)
+
+    class Meta:
+        verbose_name = "История рассылки"
+        verbose_name_plural = "Истории рассылок"
+
+    def __str__(self):
+        return f"Log {self.notification_id} at {self.started_at:%Y-%m-%d %H:%M:%S}"
+
+    @property
+    def in_progress(self):
+        return self.finished_at is None

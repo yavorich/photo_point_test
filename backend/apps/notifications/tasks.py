@@ -1,6 +1,9 @@
 from celery import shared_task
 from django.utils import timezone
-from apps.notifications.models import NotificationStatus, NotificationReceiver
+from apps.notifications.models import (
+    NotificationStatus,
+    NotificationReceiver,
+)
 from apps.notifications.services import NotificationService
 
 
@@ -20,4 +23,6 @@ def send_notification_to_user(notification_id, user_id):
         receiver.sent_at = timezone.now()
     else:
         receiver.status = NotificationStatus.FAILED
+
     receiver.save()
+    notification.update_log()
