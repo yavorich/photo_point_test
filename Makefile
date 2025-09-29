@@ -54,7 +54,7 @@ createsuperuser:
 	docker exec -it $(app_name)_backend python manage.py createsuperuser
 
 collectstatic:
-	docker exec -it $(app_name)_backend python manage.py collectstatic -y
+	docker exec -it $(app_name)_backend python manage.py collectstatic --noinput
 
 migrations:
 	docker exec -it $(app_name)_backend python manage.py makemigrations
@@ -67,3 +67,6 @@ psql:
 
 shell:
 	docker exec -it $(app_name)_backend python manage.py shell
+
+test:
+	docker exec -it $(app_name)_backend pytest
