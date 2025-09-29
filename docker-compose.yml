@@ -1,0 +1,110 @@
+services:
+  backend:
+    container_name: ppt_backend
+    build: .
+    command: uvicorn config.asgi:application --host 0.0.0.0 --port 8000 --reload
+    restart: always
+    volumes:
+      - ./backend:/backend
+      - media:/backend/media
+      - static:/backend/static
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    depends_on:
+      - postgres
+    networks:
+      - main_network
+
+  postgres:
+    container_name: ppt_postgres
+    command:
+      - "postgres"
+      - "-c"
+      - "max_connections=500"
+    image: postgres:15-alpine
+    restart: always
+    volumes:
+      - postgresql-data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    env_file:
+      - .env
+    networks:
+      - main_network
+
+  rabbitmq:
+    restart: always
+    container_name: ppt_rabbitmq
+    image: rabbitmq:3.10
+    expose:
+      - "5672"
+      - "15672"
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    networks:
+      - main_network
+
+  celery:
+    container_name: ppt_celery
+    restart: always
+    build:
+      dockerfile: ./Dockerfile
+      context: .
+    volumes:
+      - ./backend:/backend:cached
+      - media:/backend/media
+    env_file:
+      - .env
+    command: celery -A config.celery worker --beat --loglevel=info
+    depends_on:
+      - backend
+      - postgres
+      - rabbitmq
+    networks:
+      - main_network
+
+  celery-beat:
+    restart: always
+    build:
+      dockerfile: ./Dockerfile
+      context: .
+    command: celery -A config.celery beat --loglevel=info --scheduler django_celery_beat.schedulers:DatabaseScheduler
+    container_name: ppt_celery-beat
+    env_file: .env
+    volumes:
+      - ./backend:/backend:cached
+      - media:/backend/media
+    depends_on:
+      - backend
+      - postgres
+      - rabbitmq
+    networks:
+      - main_network
+
+  telegram_bot:
+    restart: always
+    command: python telegram_run_polling.py
+    container_name: ppt_telegram_bot
+    env_file:
+      - .env
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - ./backend:/backend
+      - media:/backend/media
+      - static:/backend/static
+    depends_on:
+      - backend
+    networks:
+      - main_network
+
+networks:
+  main_network:
+volumes:
+  postgresql-data:
+  media:
+  static:
+  rabbitmq-data:
