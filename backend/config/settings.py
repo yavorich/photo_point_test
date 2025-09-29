@@ -27,7 +27,6 @@ LOCAL_APPS = [
 
 THIRD_PARTY_APPS = [
     "phonenumber_field",
-    "django_celery_beat",
     "smsru",
 ]
 

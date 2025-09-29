@@ -27,8 +27,8 @@ services:
     restart: always
     volumes:
       - postgresql-data:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
+    expose:
+      - "5432"
     env_file:
       - .env
     networks:
@@ -57,25 +57,7 @@ services:
       - media:/backend/media
     env_file:
       - .env
-    command: celery -A config.celery worker --beat --loglevel=info
-    depends_on:
-      - backend
-      - postgres
-      - rabbitmq
-    networks:
-      - main_network
-
-  celery-beat:
-    restart: always
-    build:
-      dockerfile: ./Dockerfile
-      context: .
-    command: celery -A config.celery beat --loglevel=info --scheduler django_celery_beat.schedulers:DatabaseScheduler
-    container_name: ppt_celery-beat
-    env_file: .env
-    volumes:
-      - ./backend:/backend:cached
-      - media:/backend/media
+    command: celery -A config.celery worker --loglevel=info
     depends_on:
       - backend
       - postgres
