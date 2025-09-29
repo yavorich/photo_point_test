@@ -101,3 +101,15 @@ docker exec -it ppt_backend python manage.py collectstatic --noinput
 - Число успешных отправок и ошибок
 - Время выполнения и завершения
 - Статус и способ отправки для каждого получателя
+
+## Запуск тестов
+
+```bash
+make test
+```
+
+или
+
+```bash
+docker exec -it ppt_backend pytest
+```
